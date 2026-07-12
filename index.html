@@ -3,133 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Калькулятор Skoda Octavia A5</title>
+    <title>Навигатор-Калькулятор Skoda Octavia A5</title>
     
-    <!-- Подключаем Leaflet (Карты) -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <!-- Встроенная иконка -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iI0ZGRkZGRiIgc3Ryb2tlPSIjNENBRjUwIiBzdHJva2Utd2lkdGg9IjQiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzOCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNENBRjUwIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNNTAsMTUgQzYwLDI1IDcwLDM1IDcwLDUwIEM3MCw2NSA2MCw3NSA1MCw4NSBDNDAsNzUgMzAsNjUgMzAsNTAgQzMwLDM1IDQwLDI1IDUwLDE1IFoiIGZpbGw9IiM0Q0FGNTAiLz48cGF0aCBkPSJNNTAsMTUgTDY1LDQ1IEw1MCw0MCBMMzUsNDUgWiIgZmlsbD0iI0ZGRkZGRiIvPjxjaXJjbGUgY3g9IjUwIiBjeT0iMzAiIHI9IjQiIGZpbGw9IiNGRkZGRkYiLz48L3N2Zz4=">
+    <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&amp;apikey=66eb4b45-13be-429a-8c01-7fa7df5f2eb7" type="text/javascript"></script>
     
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
-        body { background-color: #f4f6f9; margin: 0; padding: 15px; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
-        .calc-card { background: white; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); width: 100%; max-width: 460px; padding: 20px; border-top: 5px solid #4CAF50; }
-        h2 { margin-top: 0; color: #2c3e50; font-size: 20px; text-align: center; margin-bottom: 5px; }
-        .subtitle { font-size: 12px; color: #7f8c8d; text-align: center; margin-bottom: 15px; font-weight: bold; }
-        .form-group { margin-bottom: 14px; }
-        label { display: block; margin-bottom: 6px; font-size: 14px; color: #34495e; font-weight: 600; }
-        select, input[type="number"] { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; outline: none; background: white; }
-        select:focus, input:focus { border-color: #4CAF50; }
-        .radio-group { display: flex; flex-direction: column; gap: 6px; }
-        .radio-btn { display: flex; align-items: center; padding: 10px; border: 1px solid #e0e0e0; border-radius: 8px; cursor: pointer; }
-        .radio-btn.active { border-color: #4CAF50; background-color: #e8f5e9; }
-        .radio-btn input { margin-right: 10px; accent-color: #4CAF50; }
-        .results { background: #f8f9fa; border-radius: 12px; padding: 16px; margin-top: 15px; border: 1px solid #eaeded; }
-        .res-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; color: #555; }
-        .total-row { border-top: 1px solid #e0e0e0; padding-top: 10px; margin-top: 10px; font-size: 16px; color: #2c3e50; font-weight: bold; }
-        .total-val { color: #4CAF50; font-size: 18px; }
-        .tank-bar-bg { background: #e0e0e0; height: 12px; border-radius: 6px; overflow: hidden; margin-top: 6px; }
-        .tank-bar-fill { background: #4CAF50; height: 100%; width: 0%; transition: width 0.3s; }
-        .trip-type { display: flex; gap: 10px; margin-top: 5px; }
-        .btn-type { flex: 1; padding: 8px; border: 1px solid #ccc; background: #fff; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; text-align: center; }
-        .btn-type.active { background: #4CAF50; color: white; border-color: #4CAF50; }
-        /* Стиль для карты */
-        #map { height: 250px; width: 100%; border-radius: 12px; margin-top: 20px; border: 1px solid #ddd; }
+        body { background-color: #f4f6f9; margin: 0; padding: 10px; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
+        .calc-card { background: white; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); width: 100%; max-width: 480px; padding: 20px; border-top: 5px solid #4CAF50; }
+        h2 { margin-top: 0; color: #2c3e50; font-size: 18px; text-align: center; margin-bottom: 5px; }
+        .subtitle { font-size: 11px; color: #7f8c8d; text-align: center; margin-bottom: 15px; font-weight: bold; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 4px; font-size: 13px; color: #34495e; font-weight: 600; }
+        input[type="number"] { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; outline: none; background: #fff; }
+        #map { width: 100%; height: 320px; border-radius: 12px; border: 1px solid #ccc; margin-bottom: 12px; }
+        .results { background: #f8f9fa; border-radius: 12px; padding: 14px; border: 1px solid #eaeded; }
+        .res-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; color: #555; }
+        .total-row { border-top: 1px solid #e0e0e0; padding-top: 8px; margin-top: 8px; font-size: 15px; color: #2c3e50; font-weight: bold; }
+        .total-val { color: #4CAF50; font-size: 16px; }
+        .checkbox-container { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; font-size: 13px; color: #555; }
+        .checkbox-container input { accent-color: #4CAF50; width: 16px; height: 16px; }
+        .hint { font-size: 11px; color: #95a5a6; text-align: center; margin-top: -5px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="calc-card">
-    <h2>Калькулятор поездок</h2>
-    <div class="subtitle">Из Димитровграда • Skoda Octavia A5</div>
+    <h2>Навигатор-Калькулятор</h2>
+    <div class="subtitle">Skoda Octavia A5 • Бак 55 л</div>
     
-    <div class="form-group">
-        <label>Выберите направление:</label>
-        <select id="destination" onchange="selectCity()">
-            <option value="240">Болгары — ~120 км</option>
-            <option value="170">Ульяновск — ~85 км</option>
-            <option value="330">Самара — ~165 км</option>
-            <option value="190">Тольятти — ~95 км</option>
-            <option value="500">Казань — ~250 км</option>
-            <option value="custom">Свой километраж</option>
-        </select>
-    </div>
+    <div class="hint">Ткните в любое место на карте или используйте поиск на ней</div>
+    <div id="map"></div>
 
-    <div class="form-group">
-        <label>Режим:</label>
-        <div class="trip-type">
-            <button class="btn-type active" id="bt-double" onclick="setTripType(2, 'bt-double')">Туда-обратно</button>
-            <button class="btn-type" id="bt-single" onclick="setTripType(1, 'bt-single')">В одну сторону</button>
-        </div>
+    <div class="checkbox-container">
+        <input type="checkbox" id="round-trip" checked onchange="recalculateTrip()">
+        <label for="round-trip" style="display:inline; font-weight:normal; margin:0;">Считать расстояние туда и обратно</label>
     </div>
     
     <div class="form-group">
-        <label>Дистанция (км):</label>
-        <input type="number" id="distance" value="240" oninput="calculateCost()">
+        <label>Дистанция маршрута (км):</label>
+        <input type="number" id="distance" value="0" oninput="calculateCost()">
+    </div>
+    
+    <div class="form-group">
+        <label>Цена за 1 литр АИ-95 (руб):</label>
+        <input type="number" id="price" value="60" oninput="calculateCost()">
     </div>
     
     <div class="results">
-        <div class="res-row"><span>Бензин:</span><span id="liters-res" style="font-weight: bold;">0.00 л</span></div>
-        <div class="res-row total-row"><span>Стоимость:</span><span class="total-val" id="cost-res">0.00 руб.</span></div>
+        <div class="res-row"><span>Необходимо бензина:</span><span id="liters-res" style="font-weight: bold;">0.0 л</span></div>
+        <div class="res-row total-row"><span>Итого стоимость:</span><span class="total-val" id="cost-res">0 руб.</span></div>
     </div>
-
-    <!-- Контейнер для карты -->
-    <div id="map"></div>
 </div>
 
 <script>
-    let currentConsumption = 6.2;
-    let tripMultiplier = 2;
-    let baseCityDistance = 120;
+    let myMap;
+    let currentRoute = null;
+    let rawDistanceKm = 0; // Чистая дистанция в одну сторону в км
+    const startPoint = [54.2138, 49.6125]; // Димитровград
 
-    // Инициализация карты
-    var map = L.map('map').setView([54.21, 49.32], 8);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
-    }).addTo(map);
-    L.marker([54.21, 49.32]).addTo(map).bindPopup("Вы здесь (Димитровград)");
+    ymaps.ready(init);
+    function init() {
+        myMap = new ymaps.Map("map", {
+            center: startPoint,
+            zoom: 8,
+            controls: ['zoomControl', 'searchControl'] // Включаем поиск по городам прямо на карте
+        });
 
-    function selectCity() {
-        const select = document.getElementById('destination');
-        const distanceInput = document.getElementById('distance');
-        if (select.value === 'custom') {
-            distanceInput.disabled = false;
-        } else {
-            baseCityDistance = parseFloat(select.value) / 2;
-            updateDistanceField();
-        }
+        // Слушаем клики по карте для построения маршрута
+        myMap.events.add('click', function (e) {
+            const clickCoords = e.get('coords');
+            buildRoute(clickCoords);
+        });
+        
+        // Слушаем поиск на карте: если пользователь нашел город, строим туда путь
+        const searchControl = myMap.controls.get('searchControl');
+        searchControl.events.add('submit', function () {
+            setTimeout(() => {
+                const results = searchControl.getResultsArray();
+                if (results.length > 0) {
+                    const targetCoords = results[0].geometry.getCoordinates();
+                    buildRoute(targetCoords);
+                }
+            }, 1000);
+        });
     }
 
-    function setTripType(multiplier, id) {
-        document.querySelectorAll('.btn-type').forEach(btn => btn.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        tripMultiplier = multiplier;
-        const select = document.getElementById('destination');
-        if (select.value !== 'custom') {
-            updateDistanceField();
-        } else {
-            calculateCost();
+    // Построение авто-маршрута
+    function buildRoute(targetCoords) {
+        if (currentRoute) {
+            myMap.geoObjects.remove(currentRoute);
         }
+
+        ymaps.route([startPoint, targetCoords], {
+            routingMode: 'auto'
+        }).then(function (route) {
+            currentRoute = route;
+            myMap.geoObjects.add(currentRoute);
+
+            // Получаем длину в метрах и переводим в км
+            rawDistanceKm = route.getLength() / 1000;
+            recalculateTrip();
+        }, function (error) {
+            alert('Не удалось проложить автомобильный маршрут до этой точки.');
+        });
     }
 
-    function updateDistanceField() {
-        document.getElementById('distance').value = Math.round(baseCityDistance * tripMultiplier);
+    // Пересчет км с учетом галочки "Туда-обратно"
+    function recalculateTrip() {
+        let finalDistance = rawDistanceKm;
+        if (document.getElementById('round-trip').checked) {
+            finalDistance = rawDistanceKm * 2;
+        }
+        document.getElementById('distance').value = Math.round(finalDistance);
         calculateCost();
     }
 
     function calculateCost() {
         const distance = parseFloat(document.getElementById('distance').value) || 0;
-        const price = 60; // Цена по умолчанию
-        const litersNeeded = (distance * 6.2) / 100;
+        const price = parseFloat(document.getElementById('price').value) || 0;
+        const consumption = 6.2; // Фиксированный расход по трассе для Skoda Octavia A5
+        
+        const litersNeeded = (distance * consumption) / 100;
         const totalCost = litersNeeded * price;
         
-        document.getElementById('liters-res').innerText = litersNeeded.toFixed(2) + ' л';
-        document.getElementById('cost-res').innerText = totalCost.toFixed(0) + ' руб.';
+        document.getElementById('liters-res').innerText = litersNeeded.toFixed(1) + ' л';
+        document.getElementById('cost-res').innerText = Math.round(totalCost) + ' руб.';
     }
-    
-    calculateCost();
 </script>
 </body>
 </html>
