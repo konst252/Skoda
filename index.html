@@ -109,10 +109,11 @@
     let cityLossBase = 10.2;
     let cityRatio = 0.15;
 
-    let startCoords = [54.2291, 49.5898]; 
+    // Точные географические координаты дома на ул. Ганенкова 30
+    let startCoords = [54.225227, 49.595457]; 
     let settingStart = false;
 
-    map = L.map('map').setView(startCoords, 11);
+    map = L.map('map').setView(startCoords, 14); // Немного увеличил зум (14), чтобы точка была видна точнее при старте
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     
     startMarker = L.marker(startCoords, {draggable: true}).addTo(map).bindPopup("Старт: ул. Ганенкова 30");
@@ -267,7 +268,6 @@
         document.getElementById('cost-res').innerText = Math.round(totalCost) + ' руб.';
     }
 
-    // Инициализация стартового просчета
     calculateCost();
 </script>
 </body>
