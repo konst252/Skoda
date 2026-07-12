@@ -87,8 +87,8 @@
             <input type="number" id="distance" value="0" oninput="calculateCost()">
         </div>
         <div style="flex: 1;">
-            <label>Цена АИ-95 (руб): <span id="price-sync" class="price-status">по умолчанию</span></label>
-            <input type="number" id="price" value="60" step="0.1" oninput="calculateCost()">
+            <label>Цена АИ-92 (руб): <span id="price-sync" class="price-status">по умолчанию</span></label>
+            <input type="number" id="price" value="63" step="0.1" oninput="calculateCost()">
         </div>
     </div>
     
@@ -255,7 +255,7 @@
 
     function calculateCost() {
         const distance = parseFloat(document.getElementById('distance').value) || 0;
-        const price = parseFloat(document.getElementById('price').value) || 60;
+        const price = parseFloat(document.getElementById('price').value) || 63;
         let currentCityLoss = cityLossBase;
         if (document.getElementById('traffic-jam').checked) currentCityLoss += 1.5;
 
@@ -268,39 +268,43 @@
         document.getElementById('cost-res').innerText = Math.round(totalCost) + ' руб.';
     }
 
-    // АВТОПОЛУЧЕНИЕ СВЕЖЕЙ СТОИМОСТИ ТОПЛИВА ПО АПИ СТАТИСТИКИ РОССТАТА/МОНИТОРИНГА
+    // УЛУЧШЕННОЕ АВТОПОЛУЧЕНИЕ ЦЕНЫ ДЛЯ АИ-92 (С ДВУМЯ КАНАЛАМИ ОБХОДА CORS)
     function fetchFuelPrice() {
         const statusEl = document.getElementById('price-sync');
-        // Используем открытый и отказоустойчивый прокси-апи для получения топливных срезов Росстата/мониторинга по Ульяновской обл.
-        fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://gogov.ru/api/gas-price/ulyanovsk-oblast'))
-            .then(response => {
-                if (response.ok) return response.json();
-                throw new Error('Сбой сети');
-            })
-            .then(data => {
-                // Извлекаем текстовый контент ответа
-                const htmlContent = data.contents;
-                // Ищем вхождение средней цены для АИ-95 регулярными выражениями
-                const match = htmlContent.match(/АИ-95<\/td><td>([\d,]+)/i);
-                if (match && match[1]) {
-                    const currentPrice = parseFloat(match[1].replace(',', '.'));
-                    if (currentPrice > 45 && currentPrice < 80) { // Валидация на адекватность цифры
-                        document.getElementById('price').value = currentPrice;
-                        statusEl.innerText = "обновлено онлайн";
-                        statusEl.style.color = "#2e7d32";
-                        calculateCost();
-                        return;
-                    }
-                }
-                statusEl.innerText = "регион: 73";
-            })
-            .catch(err => {
-                statusEl.innerText = "сеть offline (дефолт)";
-                statusEl.style.color = "#d32f2f";
+        const targetUrl = 'https://gogov.ru/api/gas-price/ulyanovsk-oblast';
+        
+        // Попытка №1 через основной прокси
+        fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(targetUrl))
+            .then(res => { if (res.ok) return res.json(); throw new Error(); })
+            .then(data => parseAndApplyPrice(data.contents))
+            .catch(() => {
+                // Попытка №2 через резервный прокси, если первый не ответил
+                fetch('https://corsproxy.io/?' + encodeURIComponent(targetUrl))
+                    .then(res => { if (res.ok) return res.text(); throw new Error(); })
+                    .then(text => parseAndApplyPrice(text))
+                    .catch(() => {
+                        statusEl.innerText = "сеть узел offline (дефолт)";
+                        statusEl.style.color = "#ef6c00";
+                    });
             });
+
+        function parseAndApplyPrice(htmlText) {
+            // Ищем строку с АИ-92 на странице мониторинга региона
+            const match = htmlText.match(/АИ-92<\/td><td>([\d,]+)/i);
+            if (match && match[1]) {
+                const currentPrice = parseFloat(match[1].replace(',', '.'));
+                if (currentPrice > 40 && currentPrice < 75) {
+                    document.getElementById('price').value = currentPrice;
+                    statusEl.innerText = "онлайн обновление";
+                    statusEl.style.color = "#2e7d32";
+                    calculateCost();
+                    return;
+                }
+            }
+            statusEl.innerText = "регион: 73";
+        }
     }
 
-    // Инициализация загрузки цен при старте
     fetchFuelPrice();
 </script>
 </body>
