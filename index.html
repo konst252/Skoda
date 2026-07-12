@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Навигатор-Калькулятор Skoda Octavia A5</title>
     
-    <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&amp;apikey=66eb4b45-13be-429a-8c01-7fa7df5f2eb7" type="text/javascript"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iI0ZGRkZGRiIgc3Ryb2tlPSIjNENBRjUwIiBzdHJva2Utd2lkdGg9IjQiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzOCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNENBRjUwIiBzdHJva2Utd2lkdGg9IjIiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjMwIiIgcj0iNCIgZmlsbD0iI0ZGRkZGRiIvPjwvc3ZnPg==">
     
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
@@ -16,7 +19,7 @@
         .form-group { margin-bottom: 12px; }
         label { display: block; margin-bottom: 4px; font-size: 13px; color: #34495e; font-weight: 600; }
         input[type="number"] { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; outline: none; background: #fff; }
-        #map { width: 100%; height: 320px; border-radius: 12px; border: 1px solid #ccc; margin-bottom: 12px; }
+        #map { width: 100%; height: 320px; border-radius: 12px; border: 1px solid #ccc; margin-bottom: 12px; z-index: 1; }
         .results { background: #f8f9fa; border-radius: 12px; padding: 14px; border: 1px solid #eaeded; }
         .res-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; color: #555; }
         .total-row { border-top: 1px solid #e0e0e0; padding-top: 8px; margin-top: 8px; font-size: 15px; color: #2c3e50; font-weight: bold; }
@@ -32,7 +35,7 @@
     <h2>Навигатор-Калькулятор</h2>
     <div class="subtitle">Skoda Octavia A5 • Бак 55 л</div>
     
-    <div class="hint">Ткните в любое место на карте или используйте поиск на ней</div>
+    <div class="hint">Просто нажмите пальцем на карту, чтобы проложить маршрут</div>
     <div id="map"></div>
 
     <div class="checkbox-container">
@@ -57,59 +60,67 @@
 </div>
 
 <script>
-    let myMap;
-    let currentRoute = null;
-    let rawDistanceKm = 0; // Чистая дистанция в одну сторону в км
+    let map;
+    let startMarker;
+    let targetMarker;
+    let routeLine = null;
+    let rawDistanceKm = 0;
+    
     const startPoint = [54.2138, 49.6125]; // Димитровград
 
-    ymaps.ready(init);
-    function init() {
-        myMap = new ymaps.Map("map", {
-            center: startPoint,
-            zoom: 8,
-            controls: ['zoomControl', 'searchControl'] // Включаем поиск по городам прямо на карте
-        });
+    // Инициализация карты
+    map = L.map('map').setView(startPoint, 8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
 
-        // Слушаем клики по карте для построения маршрута
-        myMap.events.add('click', function (e) {
-            const clickCoords = e.get('coords');
-            buildRoute(clickCoords);
-        });
+    // Стартовый маркер
+    startMarker = L.marker(startPoint).addTo(map).bindPopup("Димитровград (Старт)").openPopup();
+
+    // Клик по карте
+    map.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
         
-        // Слушаем поиск на карте: если пользователь нашел город, строим туда путь
-        const searchControl = myMap.controls.get('searchControl');
-        searchControl.events.add('submit', function () {
-            setTimeout(() => {
-                const results = searchControl.getResultsArray();
-                if (results.length > 0) {
-                    const targetCoords = results[0].geometry.getCoordinates();
-                    buildRoute(targetCoords);
-                }
-            }, 1000);
-        });
-    }
-
-    // Построение авто-маршрута
-    function buildRoute(targetCoords) {
-        if (currentRoute) {
-            myMap.geoObjects.remove(currentRoute);
+        // Ставим или двигаем маркер финиша
+        if (targetMarker) {
+            targetMarker.setLatLng(e.latlng);
+        } else {
+            targetMarker = L.marker(e.latlng).addTo(map);
         }
+        
+        getRoute(lat, lng);
+    });
 
-        ymaps.route([startPoint, targetCoords], {
-            routingMode: 'auto'
-        }).then(function (route) {
-            currentRoute = route;
-            myMap.geoObjects.add(currentRoute);
-
-            // Получаем длину в метрах и переводим в км
-            rawDistanceKm = route.getLength() / 1000;
-            recalculateTrip();
-        }, function (error) {
-            alert('Не удалось проложить автомобильный маршрут до этой точки.');
-        });
+    // Запрос маршрута у дорожного движка OSRM
+    function getRoute(toLat, toLng) {
+        const url = `https://router.project-osrm.org/route/v1/driving/${startPoint[1]},${startPoint[0]};${toLng},${toLat}?overview=full&geometries=geojson`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.code === 'Ok' && data.routes.length > 0) {
+                    const route = data.routes[0];
+                    rawDistanceKm = route.distance / 1000; // перевод метров в км
+                    
+                    // Рисуем линию на карте
+                    if (routeLine) {
+                        map.removeLayer(routeLine);
+                    }
+                    routeLine = L.geoJSON(route.geometry, {
+                        style: { color: '#3a86ff', weight: 5, opacity: 0.7 }
+                    }).addTo(map);
+                    
+                    recalculateTrip();
+                } else {
+                    alert('Не удалось проложить автомобильный путь до этой точки.');
+                }
+            })
+            .catch(err => {
+                alert('Ошибка сети при расчете пути.');
+            });
     }
 
-    // Пересчет км с учетом галочки "Туда-обратно"
     function recalculateTrip() {
         let finalDistance = rawDistanceKm;
         if (document.getElementById('round-trip').checked) {
@@ -122,7 +133,7 @@
     function calculateCost() {
         const distance = parseFloat(document.getElementById('distance').value) || 0;
         const price = parseFloat(document.getElementById('price').value) || 0;
-        const consumption = 6.2; // Фиксированный расход по трассе для Skoda Octavia A5
+        const consumption = 6.2; // Расход Октавии по трассе
         
         const litersNeeded = (distance * consumption) / 100;
         const totalCost = litersNeeded * price;
