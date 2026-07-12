@@ -8,6 +8,9 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iI0ZGRkZGRiIgc3Ryb2tlPSIjNENBRjUwIiBzdHJva2Utd2lkdGg9IjQiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzOCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNENBRjUwIiBzdHJva2Utd2lkdGg9IjIiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjMwIiIgcj0iNCIgZmlsbD0iI0ZGRkZGRiIvPjwvc3ZnPg==">
     
     <style>
@@ -19,7 +22,7 @@
         .form-group { margin-bottom: 12px; }
         label { display: block; margin-bottom: 4px; font-size: 13px; color: #34495e; font-weight: 600; }
         input[type="number"] { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; outline: none; background: #fff; }
-        #map { width: 100%; height: 320px; border-radius: 12px; border: 1px solid #ccc; margin-bottom: 12px; z-index: 1; }
+        #map { width: 100%; height: 340px; border-radius: 12px; border: 1px solid #ccc; margin-bottom: 12px; z-index: 1; }
         .results { background: #f8f9fa; border-radius: 12px; padding: 14px; border: 1px solid #eaeded; }
         .res-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; color: #555; }
         .total-row { border-top: 1px solid #e0e0e0; padding-top: 8px; margin-top: 8px; font-size: 15px; color: #2c3e50; font-weight: bold; }
@@ -27,6 +30,8 @@
         .checkbox-container { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; font-size: 13px; color: #555; }
         .checkbox-container input { accent-color: #4CAF50; width: 16px; height: 16px; }
         .hint { font-size: 11px; color: #95a5a6; text-align: center; margin-top: -5px; margin-bottom: 10px; }
+        /* Коррекция стиля кнопки поиска на карте */
+        .leaflet-control-geocoder { border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
@@ -35,7 +40,7 @@
     <h2>Навигатор-Калькулятор</h2>
     <div class="subtitle">Skoda Octavia A5 • Бак 55 л</div>
     
-    <div class="hint">Просто нажмите пальцем на карту, чтобы проложить маршрут</div>
+    <div class="hint">Используйте лупу на карте для поиска или просто ткните пальцем</div>
     <div id="map"></div>
 
     <div class="checkbox-container">
@@ -77,12 +82,32 @@
     // Стартовый маркер
     startMarker = L.marker(startPoint).addTo(map).bindPopup("Димитровград (Старт)").openPopup();
 
-    // Клик по карте
+    // Добавляем текстовый поиск на карту
+    const geocoder = L.Control.geocoder({
+        defaultMarkGeocode: false,
+        placeholder: "Поиск города/адреса...",
+        errorMessage: "Ничего не найдено"
+    })
+    .on('markgeocode', function(e) {
+        const center = e.geocode.center;
+        
+        // Перемещаем маркер финиша на найденное место
+        if (targetMarker) {
+            targetMarker.setLatLng(center);
+        } else {
+            targetMarker = L.marker(center).addTo(map);
+        }
+        
+        // Строим путь и фокусируем карту
+        getRoute(center.lat, center.lng);
+    })
+    .addTo(map);
+
+    // Клик по карте пальцем (тоже работает)
     map.on('click', function(e) {
         const lat = e.latlng.lat;
         const lng = e.latlng.lng;
         
-        // Ставим или двигаем маркер финиша
         if (targetMarker) {
             targetMarker.setLatLng(e.latlng);
         } else {
@@ -101,15 +126,17 @@
             .then(data => {
                 if (data.code === 'Ok' && data.routes.length > 0) {
                     const route = data.routes[0];
-                    rawDistanceKm = route.distance / 1000; // перевод метров в км
+                    rawDistanceKm = route.distance / 1000;
                     
-                    // Рисуем линию на карте
                     if (routeLine) {
                         map.removeLayer(routeLine);
                     }
                     routeLine = L.geoJSON(route.geometry, {
                         style: { color: '#3a86ff', weight: 5, opacity: 0.7 }
                     }).addTo(map);
+                    
+                    // Автомасштаб, чтобы влез весь маршрут
+                    map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
                     
                     recalculateTrip();
                 } else {
