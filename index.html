@@ -5,11 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Бортовой Калькулятор Skoda Octavia A5</title>
     
+    <!-- Подключаем Leaflet (Карты) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
+    <!-- Встроенная иконка -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iI0ZGRkZGRiIgc3Ryb2tlPSIjNENBRjUwIiBzdHJva2Utd2lkdGg9IjQiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzOCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNENBRjUwIiBzdHJva2Utd2lkdGg9IjIiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjMwIiIgcj0iNCIgZmlsbD0iI0ZGRkZGRiIvPjwvc3ZnPg==">
     
     <style>
@@ -24,12 +26,10 @@
         input[type="number"] { padding: 8px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; outline: none; }
         #map { width: 100%; height: 280px; border-radius: 12px; border: 1px solid #ccc; margin-bottom: 12px; z-index: 1; }
         
-        /* Кнопки режимов */
         .flex-group { display: flex; gap: 8px; margin-top: 4px; }
         .btn-mode { flex: 1; padding: 8px 4px; border: 1px solid #ccc; background: #fff; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; text-align: center; }
         .btn-mode.active { background: #4CAF50; color: white; border-color: #4CAF50; }
         
-        /* Ползунок */
         .slider-container { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #555; margin-top: 5px; }
         input[type="range"] { accent-color: #4CAF50; cursor: pointer; }
 
@@ -40,13 +40,14 @@
         
         .checkbox-container { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #34495e; }
         .checkbox-container input { accent-color: #4CAF50; width: 16px; height: 16px; }
+        .auto-badge { font-size: 10px; background: #e3f2fd; color: #1e88e5; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="calc-card">
     <h2>Бортовой Калькулятор Октавии</h2>
-    <div class="subtitle">Димитровград • Расчет по условиям дорог</div>
+    <div class="subtitle">Димитровград • Авто-определение типа дорог</div>
     
     <div id="map"></div>
 
@@ -55,9 +56,13 @@
         <label for="round-trip" style="display:inline; font-weight:normal; margin:0;">Считать расстояние туда и обратно</label>
     </div>
 
+    <!-- БЛОК РАСХОДА С АВТООПРЕДЕЛЕНИЕМ -->
     <div class="form-group">
-        <label>Разделение маршрута (Город / Трасса):</label>
-        <input type="range" id="route-ratio" min="0" max="100" value="15" oninput="updateRatio(this.value)">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label style="margin: 0;">Разделение маршрута:</label>
+            <span class="auto-badge" id="auto-status">Расчет вручную</span>
+        </div>
+        <input type="range" id="route-ratio" min="0" max="100" value="15" oninput="manualRatioUpdate(this.value)">
         <div class="slider-container">
             <span id="label-highway">Трасса: 85%</span>
             <span id="label-city">Город: 15%</span>
@@ -75,7 +80,7 @@
 
     <div class="form-group checkbox-container">
         <input type="checkbox" id="traffic-jam" onchange="calculateCost()">
-        <label for="traffic-jam" style="display:inline; font-weight:normal; margin:0;">Учесть пробки / жару и кондиционер (+1.5 л к городу)</label>
+        <label for="traffic-jam" style="display:inline; font-weight:normal; margin:0;">Учесть пробки / кондиционер (+1.5 л к городу)</label>
     </div>
 
     <div class="form-group" style="display: flex; gap: 10px; border: none; padding: 0;">
@@ -102,10 +107,9 @@
     let routeLine = null;
     let rawDistanceKm = 0;
     
-    // Базовые параметры расхода Skoda Octavia A5
-    let highwayLossPreset = 6.2; // По умолчанию обычный режим 110 км/ч
-    let cityLossBase = 9.2;      // Базовый город для А5
-    let cityRatio = 0.15;        // 15% города по умолчанию
+    let highwayLossPreset = 6.2;
+    let cityLossBase = 9.2;
+    let cityRatio = 0.15;
 
     const startPoint = [54.2138, 49.6125]; // Димитровград
 
@@ -113,7 +117,6 @@
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     L.marker(startPoint).addTo(map).bindPopup("Димитровград (Старт)");
 
-    // Поиск на карте
     L.Control.geocoder({
         defaultMarkGeocode: false,
         placeholder: "Поиск города/адреса...",
@@ -127,7 +130,6 @@
     })
     .addTo(map);
 
-    // Клик по карте
     map.on('click', function(e) {
         if (targetMarker) targetMarker.setLatLng(e.latlng);
         else targetMarker = L.marker(e.latlng).addTo(map);
@@ -148,32 +150,53 @@
                     routeLine = L.geoJSON(route.geometry, { style: { color: '#4CAF50', weight: 5, opacity: 0.8 } }).addTo(map);
                     map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
                     
+                    // Автоматически определяем пропорции на основе длины пути ТОЛЬКО В ОДНУ СТОРОНУ
+                    autoDetermineRatio(rawDistanceKm);
                     recalculateTrip();
                 }
             });
     }
 
-    // Обновление ползунка соотношения город/трасса
-    function updateRatio(value) {
+    // УМНАЯ АВТОМАТИКА РАСПРЕДЕЛЕНИЯ ДОРОГИ
+    function autoDetermineRatio(oneWayDistance) {
+        let calculatedCityPercent = 15; // базовый дефолт
+        
+        if (oneWayDistance <= 15) {
+            calculatedCityPercent = 90; // Короткая поездка — почти всё город
+        } else if (oneWayDistance <= 40) {
+            calculatedCityPercent = 40; // Пригород
+        } else if (oneWayDistance <= 100) {
+            calculatedCityPercent = 15; // Средняя дистанция (например, Ульяновск)
+        } else {
+            calculatedCityPercent = 8;  // Дальняя трасса (Самара, Казань)
+        }
+        
+        cityRatio = calculatedCityPercent / 100;
+        
+        // Обновляем ползунок на экране
+        document.getElementById('route-ratio').value = calculatedCityPercent;
+        document.getElementById('label-city').innerText = `Город: ${calculatedCityPercent}%`;
+        document.getElementById('label-highway').innerText = `Трасса: ${100 - calculatedCityPercent}%`;
+        document.getElementById('auto-status').innerText = "Определено по карте";
+        document.getElementById('auto-status').style.background = "#e8f5e9";
+        document.getElementById('auto-status').style.color = "#2e7d32";
+    }
+
+    function manualRatioUpdate(value) {
         cityRatio = value / 100;
         document.getElementById('label-city').innerText = `Город: ${value}%`;
         document.getElementById('label-highway').innerText = `Трасса: ${100 - value}%`;
+        document.getElementById('auto-status').innerText = "Изменено вручную";
+        document.getElementById('auto-status').style.background = "#fff3e0";
+        document.getElementById('auto-status').style.color = "#ef6c00";
         calculateCost();
     }
 
-    // Переключение скоростного режима на трассе
     function setSpeedMode(mode) {
         document.querySelectorAll('.btn-mode').forEach(btn => btn.classList.remove('active'));
-        if (mode === 'eco') {
-            highwayLossPreset = 5.5;
-            document.getElementById('speed-eco').classList.add('active');
-        } else if (mode === 'std') {
-            highwayLossPreset = 6.2;
-            document.getElementById('speed-std').classList.add('active');
-        } else if (mode === 'fast') {
-            highwayLossPreset = 7.8;
-            document.getElementById('speed-fast').classList.add('active');
-        }
+        if (mode === 'eco') highwayLossPreset = 5.5, document.getElementById('speed-eco').classList.add('active');
+        if (mode === 'std') highwayLossPreset = 6.2, document.getElementById('speed-std').classList.add('active');
+        if (mode === 'fast') highwayLossPreset = 7.8, document.getElementById('speed-fast').classList.add('active');
         calculateCost();
     }
 
@@ -188,19 +211,13 @@
         const distance = parseFloat(document.getElementById('distance').value) || 0;
         const price = parseFloat(document.getElementById('price').value) || 0;
         
-        // Считаем город с учетом пробок / кондиционера
         let currentCityLoss = cityLossBase;
-        if (document.getElementById('traffic-jam').checked) {
-            currentCityLoss += 1.5; // Пробки/кондей накидывают полтора литра
-        }
+        if (document.getElementById('traffic-jam').checked) currentCityLoss += 1.5;
 
-        // Вычисляем СРЕДНИЙ смешанный расход по формуле отрезков
         const averageConsumption = (highwayLossPreset * (1 - cityRatio)) + (currentCityLoss * cityRatio);
-        
         const litersNeeded = (distance * averageConsumption) / 100;
         const totalCost = litersNeeded * price;
         
-        // Выводим данные на экран
         document.getElementById('calc-consumption').innerText = averageConsumption.toFixed(1) + ' л/100 км';
         document.getElementById('liters-res').innerText = litersNeeded.toFixed(1) + ' л';
         document.getElementById('cost-res').innerText = Math.round(totalCost) + ' руб.';
