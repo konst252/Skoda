@@ -5,13 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Бортовой Калькулятор Skoda Octavia A5</title>
     
-    <!-- Подключаем Leaflet (Карты) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
-    <!-- Встроенная иконка -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iI0ZGRkZGRiIgc3Ryb2tlPSIjNENBRjUwIiBzdHJva2Utd2lkdGg9IjQiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzOCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNENBRjUwIiBzdHJva2Utd2lkdGg9IjIiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjMwIiIgcj0iNCIgZmlsbD0iI0ZGRkZGRiIvPjwvc3ZnPg==">
     
     <style>
@@ -47,8 +45,11 @@
 
 <div class="calc-card">
     <h2>Бортовой Калькулятор Октавии</h2>
-    <div class="subtitle">Димитровград • Авто-определение типа дорог</div>
+    <div class="subtitle">Учет износа (2010 г.) • Российские дороги</div>
     
+    <div style="font-size: 11px; color: #7f8c8d; margin-bottom: 8px; text-align: center;">
+        Шаг 1: Кликните/найдите старт. Шаг 2: Кликните/найдите финиш.
+    </div>
     <div id="map"></div>
 
     <div class="form-group checkbox-container" style="border:none; padding:0; margin-bottom:10px;">
@@ -56,11 +57,10 @@
         <label for="round-trip" style="display:inline; font-weight:normal; margin:0;">Считать расстояние туда и обратно</label>
     </div>
 
-    <!-- БЛОК РАСХОДА С АВТООПРЕДЕЛЕНИЕМ -->
     <div class="form-group">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <label style="margin: 0;">Разделение маршрута:</label>
-            <span class="auto-badge" id="auto-status">Расчет вручную</span>
+            <span class="auto-badge" id="auto-status">Вручную</span>
         </div>
         <input type="range" id="route-ratio" min="0" max="100" value="15" oninput="manualRatioUpdate(this.value)">
         <div class="slider-container">
@@ -72,9 +72,9 @@
     <div class="form-group">
         <label>Режим скорости на трассе:</label>
         <div class="flex-group">
-            <button class="btn-mode" id="speed-eco" onclick="setSpeedMode('eco')">Эко (90 км/ч)<br>~5.5 л</button>
-            <button class="btn-mode active" id="speed-std" onclick="setSpeedMode('std')">Обычный (110 км/ч)<br>~6.2 л</button>
-            <button class="btn-mode" id="speed-fast" onclick="setSpeedMode('fast')">Спешу (130+ км/ч)<br>~7.8 л</button>
+            <button class="btn-mode" id="speed-eco" onclick="setSpeedMode('eco')">Эко (90 км/ч)<br>~6.1 л</button>
+            <button class="btn-mode active" id="speed-std" onclick="setSpeedMode('std')">Обычный (110 км/ч)<br>~6.8 л</button>
+            <button class="btn-mode" id="speed-fast" onclick="setSpeedMode('fast')">Спешу (130+ км/ч)<br>~8.4 л</button>
         </div>
     </div>
 
@@ -95,7 +95,7 @@
     </div>
     
     <div class="results">
-        <div class="res-row"><span>Расчетный средний расход:</span><span id="calc-consumption" style="font-weight:bold;">6.4 л/100 км</span></div>
+        <div class="res-row"><span>Расчетный средний расход:</span><span id="calc-consumption" style="font-weight:bold;">7.3 л/100 км</span></div>
         <div class="res-row"><span>Понадобится топлива:</span><span id="liters-res" style="font-weight: bold;">0.0 л</span></div>
         <div class="res-row total-row"><span>Итого на поездку:</span><span class="total-val" id="cost-res">0 руб.</span></div>
     </div>
@@ -103,41 +103,107 @@
 
 <script>
     let map;
+    let startMarker;
     let targetMarker;
     let routeLine = null;
     let rawDistanceKm = 0;
     
-    let highwayLossPreset = 6.2;
-    let cityLossBase = 9.2;
+    // Обновленные базовые параметры расхода Skoda Octavia A5 (2010 г.в. + дороги РФ)
+    let highwayLossPreset = 6.8; // Обычный стиль 110 км/ч с учетом износа
+    let cityLossBase = 10.2;     // Городской цикл с учетом возраста
     let cityRatio = 0.15;
 
-    const startPoint = [54.2138, 49.6125]; // Димитровград
+    // Начальная точка по умолчанию (Димитровград, ул. Ганенкова 30)
+    let startCoords = [54.2291, 49.5898]; 
+    let settingStart = false; // Флаг для понимания, какую точку пользователь ставит кликом
 
-    map = L.map('map').setView(startPoint, 8);
+    map = L.map('map').setView(startCoords, 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    L.marker(startPoint).addTo(map).bindPopup("Димитровград (Старт)");
+    
+    // Создаем стартовый маркер
+    startMarker = L.marker(startCoords, {draggable: true}).addTo(map).bindPopup("Старт: ул. Ганенкова 30");
+    startMarker.on('dragend', function() {
+        startCoords = [startMarker.getLatLng().lat, startMarker.getLatLng().lng];
+        if (targetMarker) getRoute();
+    });
 
-    L.Control.geocoder({
+    // Умный поиск на карте
+    const geocoder = L.Control.geocoder({
         defaultMarkGeocode: false,
-        placeholder: "Поиск города/адреса...",
+        placeholder: "Поиск адреса/города...",
         errorMessage: "Не найдено"
     })
     .on('markgeocode', function(e) {
         const center = e.geocode.center;
-        if (targetMarker) targetMarker.setLatLng(center);
-        else targetMarker = L.marker(center).addTo(map);
-        getRoute(center.lat, center.lng);
+        
+        // Если финиш уже есть, или мы не переключали на ввод старта — по умолчанию ищем ФИНИШ
+        if (!settingStart) {
+            if (targetMarker) targetMarker.setLatLng(center);
+            else targetMarker = L.marker(center).addTo(map).bindPopup("Финиш");
+            getRoute();
+        } else {
+            startCoords = [center.lat, center.lng];
+            startMarker.setLatLng(center).bindPopup("Новый старт").openPopup();
+            settingStart = false;
+            if (targetMarker) getRoute();
+        }
     })
     .addTo(map);
 
+    // Добавим кастомную кнопку переключения режима клика (Старт/Финиш) прямо на карту
+    const StartToggleControl = L.Control.extend({
+        options: { position: 'topleft' },
+        onAdd: function() {
+            const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+            container.style.backgroundColor = 'white';
+            container.style.padding = '5px';
+            container.style.cursor = 'pointer';
+            container.style.fontSize = '12px';
+            container.style.fontWeight = 'bold';
+            container.innerText = '📍 Выбрать Старт';
+            
+            container.onclick = function() {
+                settingStart = !settingStart;
+                if (settingStart) {
+                    container.style.backgroundColor = '#ffecb3';
+                    container.innerText = '🔘 Ткните карту (Старт)';
+                } else {
+                    container.style.backgroundColor = 'white';
+                    container.innerText = '📍 Выбрать Старт';
+                }
+            };
+            return container;
+        }
+    });
+    map.addControl(new StartToggleControl());
+
+    // Клик по карте
     map.on('click', function(e) {
-        if (targetMarker) targetMarker.setLatLng(e.latlng);
-        else targetMarker = L.marker(e.latlng).addTo(map);
-        getRoute(e.latlng.lat, e.latlng.lng);
+        if (settingStart) {
+            startCoords = [e.latlng.lat, e.latlng.lng];
+            startMarker.setLatLng(e.latlng).bindPopup("Новая точка старта").openPopup();
+            settingStart = false;
+            // Возвращаем исходный вид кнопки управления через перезагрузку интерфейса или логику, но клик сработал
+            document.querySelectorAll('.leaflet-control').forEach(el => {
+                if(el.innerText.includes('Ткните')) {
+                    el.style.backgroundColor = 'white';
+                    el.innerText = '📍 Выбрать Старт';
+                }
+            });
+            if (targetMarker) getRoute();
+        } else {
+            if (targetMarker) targetMarker.setLatLng(e.latlng);
+            else targetMarker = L.marker(e.latlng).addTo(map).bindPopup("Финиш");
+            getRoute();
+        }
     });
 
-    function getRoute(toLat, toLng) {
-        const url = `https://router.project-osrm.org/route/v1/driving/${startPoint[1]},${startPoint[0]};${toLng},${toLat}?overview=full&geometries=geojson`;
+    function getRoute() {
+        if (!targetMarker) return;
+        const toLat = targetMarker.getLatLng().lat;
+        const toLng = targetMarker.getLatLng().lng;
+        
+        const url = `https://router.project-osrm.org/route/v1/driving/${startCoords[1]},${startCoords[0]};${toLng},${toLat}?overview=full&geometries=geojson`;
         
         fetch(url)
             .then(response => response.json())
@@ -150,34 +216,25 @@
                     routeLine = L.geoJSON(route.geometry, { style: { color: '#4CAF50', weight: 5, opacity: 0.8 } }).addTo(map);
                     map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
                     
-                    // Автоматически определяем пропорции на основе длины пути ТОЛЬКО В ОДНУ СТОРОНУ
                     autoDetermineRatio(rawDistanceKm);
                     recalculateTrip();
                 }
             });
     }
 
-    // УМНАЯ АВТОМАТИКА РАСПРЕДЕЛЕНИЯ ДОРОГИ
     function autoDetermineRatio(oneWayDistance) {
-        let calculatedCityPercent = 15; // базовый дефолт
-        
-        if (oneWayDistance <= 15) {
-            calculatedCityPercent = 90; // Короткая поездка — почти всё город
-        } else if (oneWayDistance <= 40) {
-            calculatedCityPercent = 40; // Пригород
-        } else if (oneWayDistance <= 100) {
-            calculatedCityPercent = 15; // Средняя дистанция (например, Ульяновск)
-        } else {
-            calculatedCityPercent = 8;  // Дальняя трасса (Самара, Казань)
-        }
+        let calculatedCityPercent = 15;
+        if (oneWayDistance <= 15) calculatedCityPercent = 90;
+        else if (oneWayDistance <= 40) calculatedCityPercent = 40;
+        else if (oneWayDistance <= 100) calculatedCityPercent = 15;
+        else calculatedCityPercent = 8;
         
         cityRatio = calculatedCityPercent / 100;
         
-        // Обновляем ползунок на экране
         document.getElementById('route-ratio').value = calculatedCityPercent;
         document.getElementById('label-city').innerText = `Город: ${calculatedCityPercent}%`;
         document.getElementById('label-highway').innerText = `Трасса: ${100 - calculatedCityPercent}%`;
-        document.getElementById('auto-status').innerText = "Определено по карте";
+        document.getElementById('auto-status').innerText = "По карте";
         document.getElementById('auto-status').style.background = "#e8f5e9";
         document.getElementById('auto-status').style.color = "#2e7d32";
     }
@@ -186,7 +243,7 @@
         cityRatio = value / 100;
         document.getElementById('label-city').innerText = `Город: ${value}%`;
         document.getElementById('label-highway').innerText = `Трасса: ${100 - value}%`;
-        document.getElementById('auto-status').innerText = "Изменено вручную";
+        document.getElementById('auto-status').innerText = "Вручную";
         document.getElementById('auto-status').style.background = "#fff3e0";
         document.getElementById('auto-status').style.color = "#ef6c00";
         calculateCost();
@@ -194,9 +251,9 @@
 
     function setSpeedMode(mode) {
         document.querySelectorAll('.btn-mode').forEach(btn => btn.classList.remove('active'));
-        if (mode === 'eco') highwayLossPreset = 5.5, document.getElementById('speed-eco').classList.add('active');
-        if (mode === 'std') highwayLossPreset = 6.2, document.getElementById('speed-std').classList.add('active');
-        if (mode === 'fast') highwayLossPreset = 7.8, document.getElementById('speed-fast').classList.add('active');
+        if (mode === 'eco') highwayLossPreset = 6.1, document.getElementById('speed-eco').classList.add('active');
+        if (mode === 'std') highwayLossPreset = 6.8, document.getElementById('speed-std').classList.add('active');
+        if (mode === 'fast') highwayLossPreset = 8.4, document.getElementById('speed-fast').classList.add('active');
         calculateCost();
     }
 
