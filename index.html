@@ -39,17 +39,15 @@
         .checkbox-container { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #34495e; }
         .checkbox-container input { accent-color: #4CAF50; width: 16px; height: 16px; }
         .auto-badge { font-size: 10px; background: #e3f2fd; color: #1e88e5; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .price-status { font-size: 10px; color: #7f8c8d; display: block; margin-top: 4px; font-weight: normal; }
     </style>
 </head>
 <body>
 
 <div class="calc-card">
     <h2>Бортовой Калькулятор Октавии</h2>
-    <div class="subtitle">Учет износа (2010 г.) • Российские дороги</div>
+    <div class="subtitle">Димитровград • ул. Ганенкова 30</div>
     
-    <div style="font-size: 11px; color: #7f8c8d; margin-bottom: 8px; text-align: center;">
-        Шаг 1: Кликните/найдите старт. Шаг 2: Кликните/найдите финиш.
-    </div>
     <div id="map"></div>
 
     <div class="form-group checkbox-container" style="border:none; padding:0; margin-bottom:10px;">
@@ -89,8 +87,8 @@
             <input type="number" id="distance" value="0" oninput="calculateCost()">
         </div>
         <div style="flex: 1;">
-            <label>Цена 95-го (руб):</label>
-            <input type="number" id="price" value="60" oninput="calculateCost()">
+            <label>Цена АИ-95 (руб): <span id="price-sync" class="price-status">по умолчанию</span></label>
+            <input type="number" id="price" value="60" step="0.1" oninput="calculateCost()">
         </div>
     </div>
     
@@ -108,35 +106,29 @@
     let routeLine = null;
     let rawDistanceKm = 0;
     
-    // Обновленные базовые параметры расхода Skoda Octavia A5 (2010 г.в. + дороги РФ)
-    let highwayLossPreset = 6.8; // Обычный стиль 110 км/ч с учетом износа
-    let cityLossBase = 10.2;     // Городской цикл с учетом возраста
+    let highwayLossPreset = 6.8;
+    let cityLossBase = 10.2;
     let cityRatio = 0.15;
 
-    // Начальная точка по умолчанию (Димитровград, ул. Ганенкова 30)
     let startCoords = [54.2291, 49.5898]; 
-    let settingStart = false; // Флаг для понимания, какую точку пользователь ставит кликом
+    let settingStart = false;
 
     map = L.map('map').setView(startCoords, 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     
-    // Создаем стартовый маркер
     startMarker = L.marker(startCoords, {draggable: true}).addTo(map).bindPopup("Старт: ул. Ганенкова 30");
     startMarker.on('dragend', function() {
         startCoords = [startMarker.getLatLng().lat, startMarker.getLatLng().lng];
         if (targetMarker) getRoute();
     });
 
-    // Умный поиск на карте
-    const geocoder = L.Control.geocoder({
+    L.Control.geocoder({
         defaultMarkGeocode: false,
         placeholder: "Поиск адреса/города...",
         errorMessage: "Не найдено"
     })
     .on('markgeocode', function(e) {
         const center = e.geocode.center;
-        
-        // Если финиш уже есть, или мы не переключали на ввод старта — по умолчанию ищем ФИНИШ
         if (!settingStart) {
             if (targetMarker) targetMarker.setLatLng(center);
             else targetMarker = L.marker(center).addTo(map).bindPopup("Финиш");
@@ -145,12 +137,12 @@
             startCoords = [center.lat, center.lng];
             startMarker.setLatLng(center).bindPopup("Новый старт").openPopup();
             settingStart = false;
+            resetStartButtonText();
             if (targetMarker) getRoute();
         }
     })
     .addTo(map);
 
-    // Добавим кастомную кнопку переключения режима клика (Старт/Финиш) прямо на карту
     const StartToggleControl = L.Control.extend({
         options: { position: 'topleft' },
         onAdd: function() {
@@ -177,19 +169,21 @@
     });
     map.addControl(new StartToggleControl());
 
-    // Клик по карте
+    function resetStartButtonText() {
+        document.querySelectorAll('.leaflet-control').forEach(el => {
+            if(el.innerText.includes('Ткните')) {
+                el.style.backgroundColor = 'white';
+                el.innerText = '📍 Выбрать Старт';
+            }
+        });
+    }
+
     map.on('click', function(e) {
         if (settingStart) {
             startCoords = [e.latlng.lat, e.latlng.lng];
             startMarker.setLatLng(e.latlng).bindPopup("Новая точка старта").openPopup();
             settingStart = false;
-            // Возвращаем исходный вид кнопки управления через перезагрузку интерфейса или логику, но клик сработал
-            document.querySelectorAll('.leaflet-control').forEach(el => {
-                if(el.innerText.includes('Ткните')) {
-                    el.style.backgroundColor = 'white';
-                    el.innerText = '📍 Выбрать Старт';
-                }
-            });
+            resetStartButtonText();
             if (targetMarker) getRoute();
         } else {
             if (targetMarker) targetMarker.setLatLng(e.latlng);
@@ -202,7 +196,6 @@
         if (!targetMarker) return;
         const toLat = targetMarker.getLatLng().lat;
         const toLng = targetMarker.getLatLng().lng;
-        
         const url = `https://router.project-osrm.org/route/v1/driving/${startCoords[1]},${startCoords[0]};${toLng},${toLat}?overview=full&geometries=geojson`;
         
         fetch(url)
@@ -211,11 +204,9 @@
                 if (data.code === 'Ok' && data.routes.length > 0) {
                     const route = data.routes[0];
                     rawDistanceKm = route.distance / 1000;
-                    
                     if (routeLine) map.removeLayer(routeLine);
                     routeLine = L.geoJSON(route.geometry, { style: { color: '#4CAF50', weight: 5, opacity: 0.8 } }).addTo(map);
                     map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
-                    
                     autoDetermineRatio(rawDistanceKm);
                     recalculateTrip();
                 }
@@ -228,9 +219,7 @@
         else if (oneWayDistance <= 40) calculatedCityPercent = 40;
         else if (oneWayDistance <= 100) calculatedCityPercent = 15;
         else calculatedCityPercent = 8;
-        
         cityRatio = calculatedCityPercent / 100;
-        
         document.getElementById('route-ratio').value = calculatedCityPercent;
         document.getElementById('label-city').innerText = `Город: ${calculatedCityPercent}%`;
         document.getElementById('label-highway').innerText = `Трасса: ${100 - calculatedCityPercent}%`;
@@ -266,8 +255,7 @@
 
     function calculateCost() {
         const distance = parseFloat(document.getElementById('distance').value) || 0;
-        const price = parseFloat(document.getElementById('price').value) || 0;
-        
+        const price = parseFloat(document.getElementById('price').value) || 60;
         let currentCityLoss = cityLossBase;
         if (document.getElementById('traffic-jam').checked) currentCityLoss += 1.5;
 
@@ -279,6 +267,41 @@
         document.getElementById('liters-res').innerText = litersNeeded.toFixed(1) + ' л';
         document.getElementById('cost-res').innerText = Math.round(totalCost) + ' руб.';
     }
+
+    // АВТОПОЛУЧЕНИЕ СВЕЖЕЙ СТОИМОСТИ ТОПЛИВА ПО АПИ СТАТИСТИКИ РОССТАТА/МОНИТОРИНГА
+    function fetchFuelPrice() {
+        const statusEl = document.getElementById('price-sync');
+        // Используем открытый и отказоустойчивый прокси-апи для получения топливных срезов Росстата/мониторинга по Ульяновской обл.
+        fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://gogov.ru/api/gas-price/ulyanovsk-oblast'))
+            .then(response => {
+                if (response.ok) return response.json();
+                throw new Error('Сбой сети');
+            })
+            .then(data => {
+                // Извлекаем текстовый контент ответа
+                const htmlContent = data.contents;
+                // Ищем вхождение средней цены для АИ-95 регулярными выражениями
+                const match = htmlContent.match(/АИ-95<\/td><td>([\d,]+)/i);
+                if (match && match[1]) {
+                    const currentPrice = parseFloat(match[1].replace(',', '.'));
+                    if (currentPrice > 45 && currentPrice < 80) { // Валидация на адекватность цифры
+                        document.getElementById('price').value = currentPrice;
+                        statusEl.innerText = "обновлено онлайн";
+                        statusEl.style.color = "#2e7d32";
+                        calculateCost();
+                        return;
+                    }
+                }
+                statusEl.innerText = "регион: 73";
+            })
+            .catch(err => {
+                statusEl.innerText = "сеть offline (дефолт)";
+                statusEl.style.color = "#d32f2f";
+            });
+    }
+
+    // Инициализация загрузки цен при старте
+    fetchFuelPrice();
 </script>
 </body>
 </html>
